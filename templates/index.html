@@ -253,6 +253,148 @@
       margin-bottom: 14px;
     }
 
+    /* ── card actions (star / bell) ── */
+    .card-actions {
+      position: absolute; top: 10px; right: 10px;
+      display: flex; gap: 4px; z-index: 1;
+    }
+    .star-btn, .bell-btn {
+      background: rgba(255,255,255,.07);
+      border: none; border-radius: 6px;
+      width: 26px; height: 26px; font-size: .82rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .15s, background .15s;
+    }
+    .card:hover .star-btn, .card:hover .bell-btn,
+    .star-btn.active, .bell-btn.active { opacity: 1; }
+    .star-btn:hover { background: rgba(251,191,36,.25); }
+    .bell-btn:hover { background: rgba(79,142,247,.25); }
+    .star-btn.active { color: #fbbf24; background: rgba(251,191,36,.15); }
+    .bell-btn.active { color: var(--accent); background: rgba(79,142,247,.15); }
+    .card.favorited { border-color: rgba(251,191,36,.45); }
+
+    /* ── alert modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+      width: 360px; max-width: calc(100vw - 32px);
+    }
+    .modal-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+    }
+    .modal-title { font-size: 1rem; font-weight: 700; flex: 1; }
+    .modal-close {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: .9rem;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-desc { font-size: .8rem; color: var(--muted); margin-bottom: 14px; }
+    .alert-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .alert-dir {
+      background: #12152a; border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 10px; color: var(--text); font-size: .85rem;
+      cursor: pointer; outline: none;
+    }
+    .alert-input {
+      flex: 1; min-width: 100px; background: #12152a; border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 12px; color: var(--text);
+      font-size: .95rem; font-weight: 700; outline: none; transition: border-color .15s;
+    }
+    .alert-input:focus { border-color: var(--accent); }
+    .alert-unit { font-size: .75rem; color: var(--muted); }
+    .alert-save {
+      width: 100%; background: var(--accent); border: none; border-radius: 8px;
+      color: #fff; padding: 10px; font-size: .88rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s; margin-top: 6px;
+    }
+    .alert-save:hover { opacity: .85; }
+    .existing-label {
+      font-size: .7rem; color: var(--muted); font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px; margin: 14px 0 8px;
+    }
+    .alert-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #12152a; border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; font-size: .83rem; margin-bottom: 6px;
+    }
+    .alert-item button {
+      background: none; border: none; color: var(--muted); cursor: pointer; font-size: .9rem;
+    }
+    .alert-item button:hover { color: var(--red); }
+
+    /* ── portfolio ── */
+    .portfolio-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px 24px; margin-bottom: 28px;
+    }
+    .portfolio-top {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    }
+    .portfolio-top h2 {
+      font-size: .8rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .8px; flex: 1; margin: 0;
+    }
+    .add-btn {
+      background: var(--accent); border: none; border-radius: 8px;
+      color: #fff; padding: 6px 14px; font-size: .82rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .add-btn:hover { opacity: .85; }
+    .pf-summary { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    .pf-stat {
+      background: #12152a; border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 18px; flex: 1; min-width: 130px;
+    }
+    .pf-stat-label { font-size: .72rem; color: var(--muted); margin-bottom: 4px; }
+    .pf-stat-val   { font-size: 1rem; font-weight: 700; }
+    .pf-entry {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: #12152a; border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 8px;
+    }
+    .pf-flag  { font-size: 1.4rem; }
+    .pf-info  { flex: 1; min-width: 0; }
+    .pf-name  { font-size: .85rem; font-weight: 700; margin-bottom: 3px; }
+    .pf-detail{ font-size: .75rem; color: var(--muted); line-height: 1.6; }
+    .pf-pnl   { text-align: right; flex-shrink: 0; }
+    .pf-pnl-val { font-size: .95rem; font-weight: 700; }
+    .pf-pnl-pct { font-size: .75rem; color: var(--muted); }
+    .pf-del {
+      background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem;
+    }
+    .pf-del:hover { color: var(--red); }
+    .pf-empty { font-size: .82rem; color: var(--muted); text-align: center; padding: 20px 0; }
+    .pf-form {
+      display: none; background: #12152a; border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; margin-top: 12px;
+    }
+    .pf-form.open { display: block; }
+    .pf-form-row  { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .pf-form-group{ display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
+    .pf-form-label{ font-size: .72rem; color: var(--muted); font-weight: 600; }
+    .pf-form-input, .pf-form-select {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 12px; color: var(--text);
+      font-size: .88rem; outline: none; transition: border-color .15s; width: 100%;
+    }
+    .pf-form-input:focus, .pf-form-select:focus { border-color: var(--accent); }
+    .pf-form-actions { display: flex; gap: 8px; }
+    .pf-save {
+      background: var(--accent); border: none; border-radius: 8px;
+      color: #fff; padding: 9px 20px; font-size: .85rem; font-weight: 700; cursor: pointer;
+    }
+    .pf-cancel {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--muted); padding: 9px 14px; font-size: .85rem; cursor: pointer;
+    }
+    .pf-cancel:hover { color: var(--text); }
+
     /* ── calculator ── */
     .calc-card {
       background: var(--card-bg);
@@ -333,6 +475,42 @@
 </header>
 
 <main>
+  <!-- ── 보유 외화 평가 ── -->
+  <div class="portfolio-card">
+    <div class="portfolio-top">
+      <h2>보유 외화 평가</h2>
+      <button class="add-btn" onclick="togglePfForm()">+ 추가</button>
+    </div>
+    <div class="pf-summary" id="pfSummary" style="display:none;"></div>
+    <div id="pfList">
+      <div class="pf-empty">보유 외화를 추가하면 매입가 대비 수익 / 손실을 확인할 수 있습니다.</div>
+    </div>
+    <div class="pf-form" id="pfForm">
+      <div class="pf-form-row">
+        <div class="pf-form-group">
+          <label class="pf-form-label">통화</label>
+          <select class="pf-form-select" id="pfCode" onchange="pfCurChanged()">
+            {% for code, info in currencies.items() %}
+            <option value="{{ code }}">{{ info.flag }} {{ code }} {{ info.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="pf-form-group">
+          <label class="pf-form-label">보유량</label>
+          <input class="pf-form-input" type="number" id="pfAmount" placeholder="예: 500" min="0" />
+        </div>
+        <div class="pf-form-group">
+          <label class="pf-form-label" id="pfBuyLabel">매입 환율 (원)</label>
+          <input class="pf-form-input" type="number" id="pfBuyRate" placeholder="매입 환율" min="0" />
+        </div>
+      </div>
+      <div class="pf-form-actions">
+        <button class="pf-save" onclick="addPfEntry()">추가</button>
+        <button class="pf-cancel" onclick="togglePfForm()">취소</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── 환전 계산기 ── -->
   <div class="calc-card">
     <h2>환전 계산기</h2>
@@ -363,7 +541,11 @@
   <div class="section-title" style="margin-bottom:16px;">현재 환율</div>
   <div class="grid" id="cardGrid">
     {% for code, info in currencies.items() %}
-    <div class="card" id="card-{{ code }}" onclick="openDetail('{{ code }}')">
+    <div class="card" id="card-{{ code }}" data-code="{{ code }}" onclick="openDetail('{{ code }}')">
+      <div class="card-actions">
+        <button class="star-btn" id="star-{{ code }}" data-code="{{ code }}" onclick="toggleFavorite('{{ code }}', event)" title="즐겨찾기">☆</button>
+        <button class="bell-btn" id="bell-{{ code }}" data-code="{{ code }}" onclick="openAlertModal('{{ code }}', event)" title="환율 알림">🔕</button>
+      </div>
       <div class="card-header">
         <span class="flag">{{ info.flag }}</span>
         <div>
@@ -438,6 +620,26 @@
       </div>
     </div>
   </div>
+  <!-- ── 환율 알림 모달 ── -->
+  <div class="modal-overlay" id="alertModal" onclick="if(event.target===this)closeAlertModal()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle"></span>
+        <button class="modal-close" onclick="closeAlertModal()">✕</button>
+      </div>
+      <div class="modal-desc">목표 환율에 도달하면 브라우저 알림을 받습니다.</div>
+      <div class="alert-form">
+        <select class="alert-dir" id="alertDir">
+          <option value="above">▲ 이상</option>
+          <option value="below">▼ 이하</option>
+        </select>
+        <input class="alert-input" type="number" id="alertRate" placeholder="목표 환율" />
+        <span class="alert-unit" id="alertUnit"></span>
+      </div>
+      <button class="alert-save" id="alertSaveBtn" onclick="saveAlert()">알림 설정</button>
+      <div id="existingAlerts"></div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -501,6 +703,8 @@ async function loadRates() {
     // refresh active panel if open
     if (activeCurrency) refreshStats(activeCurrency);
     calcConvert();
+    checkAlerts();
+    renderPortfolio();
   } catch(e) {
     console.error(e);
     alert('환율 데이터 로드 실패: ' + e.message);
@@ -693,6 +897,254 @@ function escHtml(s) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── favorites ────────────────────────────────────────
+let favorites = new Set(JSON.parse(localStorage.getItem('fav_currencies') || '[]'));
+
+function toggleFavorite(code, e) {
+  e.stopPropagation();
+  favorites.has(code) ? favorites.delete(code) : favorites.add(code);
+  localStorage.setItem('fav_currencies', JSON.stringify([...favorites]));
+  updateStars();
+  sortCards();
+}
+
+function updateStars() {
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    const code = btn.dataset.code;
+    const on   = favorites.has(code);
+    btn.textContent = on ? '★' : '☆';
+    btn.classList.toggle('active', on);
+  });
+  document.querySelectorAll('.card[data-code]').forEach(card => {
+    card.classList.toggle('favorited', favorites.has(card.dataset.code));
+  });
+}
+
+function sortCards() {
+  const grid  = document.getElementById('cardGrid');
+  const cards = [...grid.querySelectorAll('.card[data-code]')];
+  cards.sort((a, b) => {
+    const af = favorites.has(a.dataset.code) ? 0 : 1;
+    const bf = favorites.has(b.dataset.code) ? 0 : 1;
+    return af - bf;
+  });
+  cards.forEach(c => grid.appendChild(c));
+}
+
+// ── alerts ────────────────────────────────────────────
+let alerts        = JSON.parse(localStorage.getItem('rate_alerts') || '[]');
+let alertCurrency = null;
+const firedAlerts = new Set();
+
+async function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+function openAlertModal(code, e) {
+  e.stopPropagation();
+  alertCurrency = code;
+  const currencies = {{ currencies | tojson }};
+  const info = currencies[code];
+  const r    = ratesData[code];
+  document.getElementById('modalTitle').textContent =
+    `${info.flag} ${info.name} (${code}) 알림`;
+  document.getElementById('alertRate').value = r ? Math.round(r.rate) : '';
+  document.getElementById('alertUnit').textContent = `원 / ${info.unit}${info.symbol}`;
+  renderExistingAlerts(code);
+  document.getElementById('alertModal').classList.add('open');
+  document.getElementById('alertSaveBtn').textContent = '알림 설정';
+  requestNotifPermission();
+}
+
+function closeAlertModal() {
+  document.getElementById('alertModal').classList.remove('open');
+  alertCurrency = null;
+}
+
+function saveAlert() {
+  const rate = parseFloat(document.getElementById('alertRate').value);
+  const dir  = document.getElementById('alertDir').value;
+  if (!alertCurrency || isNaN(rate) || rate <= 0) return;
+
+  alerts = alerts.filter(a => !(a.code === alertCurrency && a.direction === dir));
+  alerts.push({ code: alertCurrency, rate, direction: dir });
+  localStorage.setItem('rate_alerts', JSON.stringify(alerts));
+  renderExistingAlerts(alertCurrency);
+  updateBells();
+
+  const btn = document.getElementById('alertSaveBtn');
+  btn.textContent = '✓ 설정 완료!';
+  setTimeout(() => { btn.textContent = '알림 설정'; }, 1500);
+}
+
+function deleteAlert(code, dir) {
+  alerts = alerts.filter(a => !(a.code === code && a.direction === dir));
+  localStorage.setItem('rate_alerts', JSON.stringify(alerts));
+  renderExistingAlerts(code);
+  updateBells();
+}
+
+function renderExistingAlerts(code) {
+  const el       = document.getElementById('existingAlerts');
+  const myAlerts = alerts.filter(a => a.code === code);
+  if (!myAlerts.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="existing-label">설정된 알림</div>' +
+    myAlerts.map(a => `
+      <div class="alert-item">
+        <span>${a.direction === 'above' ? '▲' : '▼'} ${a.rate.toLocaleString('ko-KR')} 원</span>
+        <button onclick="deleteAlert('${a.code}','${a.direction}')">✕</button>
+      </div>
+    `).join('');
+}
+
+function updateBells() {
+  document.querySelectorAll('.bell-btn').forEach(btn => {
+    const code     = btn.dataset.code;
+    const hasAlert = alerts.some(a => a.code === code);
+    btn.classList.toggle('active', hasAlert);
+    btn.textContent = hasAlert ? '🔔' : '🔕';
+  });
+}
+
+function checkAlerts() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  alerts.forEach(a => {
+    const key  = `${a.code}-${a.direction}`;
+    const r    = ratesData[a.code];
+    if (!r) return;
+    const hit  = a.direction === 'above' ? r.rate >= a.rate : r.rate <= a.rate;
+    if (hit && !firedAlerts.has(key)) {
+      firedAlerts.add(key);
+      const currencies = {{ currencies | tojson }};
+      const info = currencies[a.code];
+      new Notification(`환율 알림: ${info.name} (${a.code})`, {
+        body: `현재 ${r.rate.toLocaleString('ko-KR')}원 — 목표 ${a.rate.toLocaleString('ko-KR')}원 ${a.direction === 'above' ? '이상' : '이하'} 도달`,
+      });
+    } else if (!hit) {
+      firedAlerts.delete(key);
+    }
+  });
+}
+
+// ── portfolio ─────────────────────────────────────────
+let portfolio = JSON.parse(localStorage.getItem('portfolio') || '[]');
+let pfNextId  = portfolio.length ? Math.max(...portfolio.map(e => e.id)) + 1 : 1;
+
+function togglePfForm() {
+  const form = document.getElementById('pfForm');
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) pfCurChanged();
+}
+
+function pfCurChanged() {
+  const code  = document.getElementById('pfCode').value;
+  const currencies = {{ currencies | tojson }};
+  const info  = currencies[code];
+  const r     = ratesData[code];
+  document.getElementById('pfBuyLabel').textContent =
+    `매입 환율 (원/${info.unit}${info.symbol})`;
+  if (r) document.getElementById('pfBuyRate').value = Math.round(r.rate);
+}
+
+function addPfEntry() {
+  const code    = document.getElementById('pfCode').value;
+  const amount  = parseFloat(document.getElementById('pfAmount').value);
+  const buyRate = parseFloat(document.getElementById('pfBuyRate').value);
+  if (!code || isNaN(amount) || amount <= 0 || isNaN(buyRate) || buyRate <= 0) return;
+  portfolio.push({ id: pfNextId++, code, amount, buyRate });
+  localStorage.setItem('portfolio', JSON.stringify(portfolio));
+  document.getElementById('pfAmount').value = '';
+  document.getElementById('pfForm').classList.remove('open');
+  renderPortfolio();
+}
+
+function deletePfEntry(id) {
+  portfolio = portfolio.filter(e => e.id !== id);
+  localStorage.setItem('portfolio', JSON.stringify(portfolio));
+  renderPortfolio();
+}
+
+function renderPortfolio() {
+  const listEl    = document.getElementById('pfList');
+  const summaryEl = document.getElementById('pfSummary');
+
+  if (!portfolio.length) {
+    listEl.innerHTML = '<div class="pf-empty">보유 외화를 추가하면 매입가 대비 수익 / 손실을 확인할 수 있습니다.</div>';
+    summaryEl.style.display = 'none';
+    return;
+  }
+
+  const currencies  = {{ currencies | tojson }};
+  let totalPurchase = 0, totalCurrent = 0;
+  const rows        = [];
+
+  for (const e of portfolio) {
+    const info = currencies[e.code];
+    if (!info) continue;
+    const r          = ratesData[e.code];
+    const unit       = info.unit;
+    const buyRateOne = e.buyRate / unit;                    // KRW per 1 foreign unit
+    const curRateOne = r ? r.rate / unit : null;
+    const purchaseKRW= e.amount * buyRateOne;
+    const currentKRW = curRateOne != null ? e.amount * curRateOne : null;
+    const pnl        = currentKRW != null ? currentKRW - purchaseKRW : null;
+    const pnlPct     = pnl != null ? (pnl / purchaseKRW) * 100 : null;
+
+    if (currentKRW != null) { totalPurchase += purchaseKRW; totalCurrent += currentKRW; }
+
+    const dir  = pnl > 0 ? 'up' : pnl < 0 ? 'down' : '';
+    const sign = pnl != null && pnl >= 0 ? '+' : '';
+    const pnlHtml = pnl != null
+      ? `<div class="pf-pnl-val ${dir}">${sign}${Math.round(pnl).toLocaleString('ko-KR')}원</div>
+         <div class="pf-pnl-pct">${sign}${pnlPct.toFixed(2)}%</div>`
+      : '<div class="pf-pnl-val">—</div>';
+
+    rows.push(`
+      <div class="pf-entry">
+        <span class="pf-flag">${info.flag}</span>
+        <div class="pf-info">
+          <div class="pf-name">${e.amount.toLocaleString('ko-KR')} ${info.symbol} · ${info.name}</div>
+          <div class="pf-detail">
+            매입 ${e.buyRate.toLocaleString('ko-KR')}원/${unit}${info.symbol}
+            &nbsp;·&nbsp; 매입가 ${Math.round(purchaseKRW).toLocaleString('ko-KR')}원
+            ${currentKRW != null ? ` → 현재 ${Math.round(currentKRW).toLocaleString('ko-KR')}원` : ''}
+          </div>
+        </div>
+        <div class="pf-pnl">${pnlHtml}</div>
+        <button class="pf-del" onclick="deletePfEntry(${e.id})">✕</button>
+      </div>
+    `);
+  }
+
+  listEl.innerHTML = rows.join('');
+
+  const totalPnl    = totalCurrent - totalPurchase;
+  const totalPnlPct = totalPurchase > 0 ? (totalPnl / totalPurchase) * 100 : 0;
+  const tDir  = totalPnl > 0 ? 'up' : totalPnl < 0 ? 'down' : '';
+  const tSign = totalPnl >= 0 ? '+' : '';
+  summaryEl.style.display = 'flex';
+  summaryEl.innerHTML = `
+    <div class="pf-stat">
+      <div class="pf-stat-label">총 매입가</div>
+      <div class="pf-stat-val">${Math.round(totalPurchase).toLocaleString('ko-KR')}원</div>
+    </div>
+    <div class="pf-stat">
+      <div class="pf-stat-label">총 평가액</div>
+      <div class="pf-stat-val">${Math.round(totalCurrent).toLocaleString('ko-KR')}원</div>
+    </div>
+    <div class="pf-stat">
+      <div class="pf-stat-label">총 손익</div>
+      <div class="pf-stat-val ${tDir}">${tSign}${Math.round(totalPnl).toLocaleString('ko-KR')}원</div>
+    </div>
+    <div class="pf-stat">
+      <div class="pf-stat-label">수익률</div>
+      <div class="pf-stat-val ${tDir}">${tSign}${totalPnlPct.toFixed(2)}%</div>
+    </div>
+  `;
+}
+
 // ── calculator ───────────────────────────────────────
 function krwPerOne(code) {
   if (code === 'KRW') return 1;
@@ -739,8 +1191,12 @@ function calcSwap() {
 }
 
 // ── init ──────────────────────────────────────────────
+updateStars();
+updateBells();
+sortCards();
+renderPortfolio();
+requestNotifPermission();
 loadRates();
-// 5분마다 자동 갱신
 setInterval(loadRates, 5 * 60 * 1000);
 </script>
 </body>
