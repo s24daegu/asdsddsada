@@ -170,6 +170,13 @@
     .travel-reason { font-size: .8rem; color: var(--text); line-height: 1.6; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
     .travel-tags { display: flex; flex-wrap: wrap; gap: 6px; }
     .travel-tag { font-size: .72rem; background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px; color: var(--muted); }
+    /* ── tab navigation ── */
+    .tab-nav { background: #fff; border-bottom: 2px solid var(--border); display: flex; gap: 0; padding: 0 32px; overflow-x: auto; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    .tab-btn { background: none; border: none; border-bottom: 3px solid transparent; padding: 14px 22px; font-size: .88rem; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; transition: color .15s, border-color .15s; margin-bottom: -2px; }
+    .tab-btn:hover { color: var(--accent); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
   </style>
 </head>
 <body>
@@ -184,7 +191,15 @@
   <button class="refresh-btn" onclick="loadRates()">새로고침</button>
 </header>
 
+<nav class="tab-nav">
+  <button class="tab-btn active" id="tbn-rates"     onclick="switchTab('rates')">🏦 환율 현황</button>
+  <button class="tab-btn"        id="tbn-travel"    onclick="switchTab('travel')">🌏 AI 여행 추천</button>
+  <button class="tab-btn"        id="tbn-calc"      onclick="switchTab('calc')">💱 환전 계산기</button>
+  <button class="tab-btn"        id="tbn-portfolio" onclick="switchTab('portfolio')">💼 포트폴리오</button>
+</nav>
+
 <main>
+  <div class="tab-content" id="tab-portfolio">
   <!-- 보유 외화 평가 -->
   <div class="portfolio-card">
     <div class="portfolio-top">
@@ -214,7 +229,9 @@
       </div>
     </div>
   </div>
+  </div><!-- /tab-portfolio -->
 
+  <div class="tab-content" id="tab-travel">
   <!-- 계절별 여행지 추천 -->
   <div class="travel-card">
     <div class="travel-header">
@@ -225,7 +242,9 @@
       <div style="color:var(--muted);font-size:.85rem;padding:10px 0;">환율 데이터 로딩 후 추천이 표시됩니다…</div>
     </div>
   </div>
+  </div><!-- /tab-travel -->
 
+  <div class="tab-content" id="tab-calc">
   <!-- 환전 계산기 -->
   <div class="calc-card">
     <h2>환전 계산기</h2>
@@ -242,7 +261,9 @@
     </div>
     <div class="calc-note" id="calcNote"></div>
   </div>
+  </div><!-- /tab-calc -->
 
+  <div class="tab-content active" id="tab-rates">
   <div class="section-title" style="margin-bottom:16px;">현재 환율</div>
   <div class="grid" id="cardGrid"></div>
 
@@ -279,6 +300,8 @@
       </div>
     </div>
   </div>
+
+  </div><!-- /tab-rates -->
 
   <!-- 환율 알림 모달 -->
   <div class="modal-overlay" id="alertModal" onclick="if(event.target===this)closeAlertModal()">
@@ -468,7 +491,7 @@ async function loadRates() {
       }
     }
     if (activeCurrency) refreshStats(activeCurrency);
-    calcConvert(); checkAlerts(); renderPortfolio(); renderTravel();
+    calcConvert(); checkAlerts(); renderPortfolio(); if (travelLoaded) renderTravel();
   } catch(e) { console.error(e); }
 }
 
@@ -971,12 +994,26 @@ function timeAgo(str) {
   if (s<86400) return `${Math.floor(s/3600)}시간 전`; return `${Math.floor(s/86400)}일 전`;
 }
 
+// ── tab navigation ────────────────────────────────────
+let travelLoaded = false;
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  const content = document.getElementById('tab-' + name);
+  const btn     = document.getElementById('tbn-' + name);
+  if (content) content.classList.add('active');
+  if (btn)     btn.classList.add('active');
+  if (name === 'travel' && !travelLoaded) {
+    travelLoaded = true;
+    renderTravel();
+  }
+}
+
 // ── 초기화 ────────────────────────────────────────────
 buildSelects();
 buildCards();
 updateStars(); updateBells(); sortCards();
 renderPortfolio();
-renderTravel();
 requestNotifPermission();
 loadRates();
 setInterval(loadRates, 5*60*1000);
