@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>원화 환율 트래커</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --card-bg: #1a1d27; --card-hov: #22263a;
+      --border: #2e3248; --accent: #4f8ef7; --green: #22c55e;
+      --red: #ef4444; --text: #e2e8f0; --muted: #8892a4; --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { background: linear-gradient(135deg,#1a1d27,#12152a); border-bottom: 1px solid var(--border); padding: 18px 32px; display: flex; align-items: center; gap: 14px; }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.4px; }
+    header .subtitle { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+    .logo { font-size: 2rem; }
+    .refresh-btn { margin-left: auto; background: var(--accent); border: none; color: #fff; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; transition: opacity .2s; }
+    .refresh-btn:hover { opacity: .85; }
+    .last-update { font-size: .78rem; color: var(--muted); margin-left: 12px; }
+    main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: background .2s, transform .15s, box-shadow .2s; position: relative; overflow: hidden; }
+    .card:hover { background: var(--card-hov); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+    .card.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,142,247,.25); }
+    .card.favorited { border-color: rgba(251,191,36,.45); }
+    .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .flag { font-size: 1.7rem; line-height: 1; }
+    .card-name { font-size: .8rem; color: var(--muted); }
+    .card-code { font-weight: 700; font-size: 1rem; }
+    .rate-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+    .rate-val { font-size: 1.45rem; font-weight: 700; letter-spacing: -.5px; }
+    .rate-unit { font-size: .78rem; color: var(--muted); }
+    .change-badge { display: inline-flex; align-items: center; gap: 3px; font-size: .78rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; margin-top: 8px; }
+    .change-badge.up   { background: rgba(34,197,94,.15); color: var(--green); }
+    .change-badge.down { background: rgba(239,68,68,.15);  color: var(--red); }
+    .change-badge.flat { background: rgba(255,255,255,.06); color: var(--muted); }
+    .skeleton { background: linear-gradient(90deg,var(--border) 25%,#2a2f48 50%,var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; height: 1.4rem; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; z-index: 1; }
+    .star-btn, .bell-btn { background: rgba(255,255,255,.07); border: none; border-radius: 6px; width: 26px; height: 26px; font-size: .82rem; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s, background .15s; }
+    .card:hover .star-btn, .card:hover .bell-btn, .star-btn.active, .bell-btn.active { opacity: 1; }
+    .star-btn:hover { background: rgba(251,191,36,.25); }
+    .bell-btn:hover { background: rgba(79,142,247,.25); }
+    .star-btn.active { color: #fbbf24; background: rgba(251,191,36,.15); }
+    .bell-btn.active { color: var(--accent); background: rgba(79,142,247,.15); }
+    .detail-panel { display: none; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; margin-top: 24px; }
+    .detail-panel.open { display: block; }
+    .panel-header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+    .panel-title { font-size: 1.2rem; font-weight: 700; }
+    .panel-subtitle { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+    .close-btn { margin-left: auto; background: none; border: 1px solid var(--border); color: var(--muted); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
+    .close-btn:hover { background: var(--card-hov); color: var(--text); }
+    .panel-body { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+    @media (max-width: 900px) { .panel-body { grid-template-columns: 1fr; } }
+    .chart-wrap { background: #12152a; border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+    .chart-wrap h3 { font-size: .88rem; color: var(--muted); margin-bottom: 14px; font-weight: 600; }
+    .chart-container { position: relative; height: 240px; }
+    .period-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .period-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 4px 12px; border-radius: 6px; font-size: .78rem; cursor: pointer; transition: all .15s; }
+    .period-btn.active, .period-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .news-wrap { display: flex; flex-direction: column; gap: 0; }
+    .news-wrap h3 { font-size: .88rem; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+    .news-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; }
+    .news-list::-webkit-scrollbar { width: 4px; }
+    .news-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .news-item { background: #12152a; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; text-decoration: none; color: var(--text); transition: background .15s; display: block; }
+    .news-item:hover { background: var(--card-hov); }
+    .news-item-title { font-size: .83rem; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+    .news-item-meta { display: flex; gap: 8px; align-items: center; }
+    .news-item-date { font-size: .72rem; color: var(--muted); }
+    .news-lang { font-size: .65rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+    .news-lang.ko { background: rgba(79,142,247,.2); color: var(--accent); }
+    .news-lang.en { background: rgba(34,197,94,.15); color: var(--green); }
+    .news-item-summary { font-size: .75rem; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .no-news { font-size: .82rem; color: var(--muted); text-align: center; padding: 24px 0; }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 30px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .stats-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+    .stat-box { background: #12152a; border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; flex: 1; min-width: 120px; }
+    .stat-label { font-size: .72rem; color: var(--muted); margin-bottom: 4px; }
+    .stat-val { font-size: 1.05rem; font-weight: 700; }
+    .stat-val.up { color: var(--green); }
+    .stat-val.down { color: var(--red); }
+    .section-title { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 14px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 360px; max-width: calc(100vw - 32px); }
+    .modal-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .modal-title { font-size: 1rem; font-weight: 700; flex: 1; }
+    .modal-close { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: .9rem; }
+    .modal-close:hover { color: var(--text); }
+    .modal-desc { font-size: .8rem; color: var(--muted); margin-bottom: 14px; }
+    .alert-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .alert-dir { background: #12152a; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; color: var(--text); font-size: .85rem; cursor: pointer; outline: none; }
+    .alert-input { flex: 1; min-width: 100px; background: #12152a; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: .95rem; font-weight: 700; outline: none; transition: border-color .15s; }
+    .alert-input:focus { border-color: var(--accent); }
+    .alert-unit { font-size: .75rem; color: var(--muted); }
+    .alert-save { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: #fff; padding: 10px; font-size: .88rem; font-weight: 700; cursor: pointer; transition: opacity .2s; margin-top: 6px; }
+    .alert-save:hover { opacity: .85; }
+    .existing-label { font-size: .7rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin: 14px 0 8px; }
+    .alert-item { display: flex; align-items: center; justify-content: space-between; background: #12152a; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: .83rem; margin-bottom: 6px; }
+    .alert-item button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .9rem; }
+    .alert-item button:hover { color: var(--red); }
+    .portfolio-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 28px; }
+    .portfolio-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .portfolio-top h2 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; flex: 1; margin: 0; }
+    .add-btn { background: var(--accent); border: none; border-radius: 8px; color: #fff; padding: 6px 14px; font-size: .82rem; font-weight: 700; cursor: pointer; transition: opacity .2s; }
+    .add-btn:hover { opacity: .85; }
+    .pf-summary { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    .pf-stat { background: #12152a; border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; flex: 1; min-width: 130px; }
+    .pf-stat-label { font-size: .72rem; color: var(--muted); margin-bottom: 4px; }
+    .pf-stat-val { font-size: 1rem; font-weight: 700; }
+    .pf-entry { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #12152a; border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; }
+    .pf-flag { font-size: 1.4rem; }
+    .pf-info { flex: 1; min-width: 0; }
+    .pf-name { font-size: .85rem; font-weight: 700; margin-bottom: 3px; }
+    .pf-detail { font-size: .75rem; color: var(--muted); line-height: 1.6; }
+    .pf-pnl { text-align: right; flex-shrink: 0; }
+    .pf-pnl-val { font-size: .95rem; font-weight: 700; }
+    .pf-pnl-pct { font-size: .75rem; color: var(--muted); }
+    .pf-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; }
+    .pf-del:hover { color: var(--red); }
+    .pf-empty { font-size: .82rem; color: var(--muted); text-align: center; padding: 20px 0; }
+    .pf-form { display: none; background: #12152a; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 12px; }
+    .pf-form.open { display: block; }
+    .pf-form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .pf-form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
+    .pf-form-label { font-size: .72rem; color: var(--muted); font-weight: 600; }
+    .pf-form-input, .pf-form-select { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: .88rem; outline: none; transition: border-color .15s; width: 100%; }
+    .pf-form-input:focus, .pf-form-select:focus { border-color: var(--accent); }
+    .pf-form-actions { display: flex; gap: 8px; }
+    .pf-save { background: var(--accent); border: none; border-radius: 8px; color: #fff; padding: 9px 20px; font-size: .85rem; font-weight: 700; cursor: pointer; }
+    .pf-cancel { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); padding: 9px 14px; font-size: .85rem; cursor: pointer; }
+    .pf-cancel:hover { color: var(--text); }
+    .calc-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 28px; }
+    .calc-card h2 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 16px; }
+    .calc-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .calc-side { flex: 1; min-width: 200px; display: flex; gap: 8px; }
+    .calc-input { flex: 1; background: #12152a; border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 1.15rem; font-weight: 700; color: var(--text); outline: none; transition: border-color .15s; min-width: 0; }
+    .calc-input:focus { border-color: var(--accent); }
+    .calc-select { background: #12152a; border: 1px solid var(--border); border-radius: 8px; padding: 11px 10px; font-size: .85rem; font-weight: 600; color: var(--text); cursor: pointer; outline: none; flex-shrink: 0; }
+    .calc-swap { background: none; border: 1px solid var(--border); color: var(--accent); width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+    .calc-swap:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .calc-result { flex: 1; background: #12152a; border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 1.15rem; font-weight: 700; color: var(--accent); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .calc-note { margin-top: 10px; font-size: .78rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">💱</div>
+  <div>
+    <h1>원화(KRW) 환율 트래커</h1>
+    <div class="subtitle">한국 원화 기준 각국 환율 · 변동 추적 · 관련 뉴스</div>
+  </div>
+  <span class="last-update" id="lastUpdate">—</span>
+  <button class="refresh-btn" onclick="loadRates()">새로고침</button>
+</header>
+
+<main>
+  <!-- 보유 외화 평가 -->
+  <div class="portfolio-card">
+    <div class="portfolio-top">
+      <h2>보유 외화 평가</h2>
+      <button class="add-btn" onclick="togglePfForm()">+ 추가</button>
+    </div>
+    <div class="pf-summary" id="pfSummary" style="display:none;"></div>
+    <div id="pfList"><div class="pf-empty">보유 외화를 추가하면 매입가 대비 수익 / 손실을 확인할 수 있습니다.</div></div>
+    <div class="pf-form" id="pfForm">
+      <div class="pf-form-row">
+        <div class="pf-form-group">
+          <label class="pf-form-label">통화</label>
+          <select class="pf-form-select" id="pfCode" onchange="pfCurChanged()"></select>
+        </div>
+        <div class="pf-form-group">
+          <label class="pf-form-label">보유량</label>
+          <input class="pf-form-input" type="number" id="pfAmount" placeholder="예: 500" min="0" />
+        </div>
+        <div class="pf-form-group">
+          <label class="pf-form-label" id="pfBuyLabel">매입 환율 (원)</label>
+          <input class="pf-form-input" type="number" id="pfBuyRate" placeholder="매입 환율" min="0" />
+        </div>
+      </div>
+      <div class="pf-form-actions">
+        <button class="pf-save" onclick="addPfEntry()">추가</button>
+        <button class="pf-cancel" onclick="togglePfForm()">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 환전 계산기 -->
+  <div class="calc-card">
+    <h2>환전 계산기</h2>
+    <div class="calc-row">
+      <div class="calc-side">
+        <input class="calc-input" type="number" id="calcFrom" value="10000" min="0" oninput="calcConvert()" />
+        <select class="calc-select" id="calcFromCur" onchange="calcConvert()"></select>
+      </div>
+      <button class="calc-swap" onclick="calcSwap()">⇄</button>
+      <div class="calc-side">
+        <div class="calc-result" id="calcResult">—</div>
+        <select class="calc-select" id="calcToCur" onchange="calcConvert()"></select>
+      </div>
+    </div>
+    <div class="calc-note" id="calcNote"></div>
+  </div>
+
+  <div class="section-title" style="margin-bottom:16px;">현재 환율</div>
+  <div class="grid" id="cardGrid"></div>
+
+  <!-- 상세 패널 -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="panel-header">
+      <span id="panelFlag" style="font-size:2rem;"></span>
+      <div>
+        <div class="panel-title" id="panelTitle"></div>
+        <div class="panel-subtitle" id="panelSubtitle"></div>
+      </div>
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">현재 환율</div><div class="stat-val" id="statCurrent">—</div></div>
+      <div class="stat-box"><div class="stat-label">전일 대비</div><div class="stat-val" id="statChange">—</div></div>
+      <div class="stat-box"><div class="stat-label">변동률</div><div class="stat-val" id="statPct">—</div></div>
+      <div class="stat-box"><div class="stat-label">30일 최고</div><div class="stat-val" id="statHigh">—</div></div>
+      <div class="stat-box"><div class="stat-label">30일 최저</div><div class="stat-val" id="statLow">—</div></div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-wrap">
+        <h3>📈 환율 추이 (최근 30일)</h3>
+        <div class="period-tabs">
+          <button class="period-btn active" data-days="7"  onclick="setPeriod(7, this)">7일</button>
+          <button class="period-btn"        data-days="14" onclick="setPeriod(14,this)">14일</button>
+          <button class="period-btn"        data-days="30" onclick="setPeriod(30,this)">30일</button>
+        </div>
+        <div class="chart-container"><canvas id="rateChart"></canvas></div>
+      </div>
+      <div class="news-wrap">
+        <h3>📰 관련 뉴스 · 환율 변동 근거</h3>
+        <div class="news-list" id="newsList"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 환율 알림 모달 -->
+  <div class="modal-overlay" id="alertModal" onclick="if(event.target===this)closeAlertModal()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle"></span>
+        <button class="modal-close" onclick="closeAlertModal()">✕</button>
+      </div>
+      <div class="modal-desc">목표 환율에 도달하면 브라우저 알림을 받습니다.</div>
+      <div class="alert-form">
+        <select class="alert-dir" id="alertDir">
+          <option value="above">▲ 이상</option>
+          <option value="below">▼ 이하</option>
+        </select>
+        <input class="alert-input" type="number" id="alertRate" placeholder="목표 환율" />
+        <span class="alert-unit" id="alertUnit"></span>
+      </div>
+      <button class="alert-save" id="alertSaveBtn" onclick="saveAlert()">알림 설정</button>
+      <div id="existingAlerts"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── 통화 정의 ────────────────────────────────────────
+const CURRENCIES = {
+  USD: { name:'미국 달러',       country:'미국',        flag:'🇺🇸', symbol:'$',   unit:1   },
+  EUR: { name:'유로',            country:'유럽',        flag:'🇪🇺', symbol:'€',   unit:1   },
+  JPY: { name:'일본 엔',         country:'일본',        flag:'🇯🇵', symbol:'¥',   unit:100 },
+  CNY: { name:'중국 위안',       country:'중국',        flag:'🇨🇳', symbol:'¥',   unit:1   },
+  GBP: { name:'영국 파운드',     country:'영국',        flag:'🇬🇧', symbol:'£',   unit:1   },
+  AUD: { name:'호주 달러',       country:'호주',        flag:'🇦🇺', symbol:'A$',  unit:1   },
+  CAD: { name:'캐나다 달러',     country:'캐나다',      flag:'🇨🇦', symbol:'C$',  unit:1   },
+  CHF: { name:'스위스 프랑',     country:'스위스',      flag:'🇨🇭', symbol:'Fr',  unit:1   },
+  HKD: { name:'홍콩 달러',       country:'홍콩',        flag:'🇭🇰', symbol:'HK$', unit:1   },
+  SGD: { name:'싱가포르 달러',   country:'싱가포르',    flag:'🇸🇬', symbol:'S$',  unit:1   },
+  THB: { name:'태국 바트',       country:'태국',        flag:'🇹🇭', symbol:'฿',   unit:100 },
+  INR: { name:'인도 루피',       country:'인도',        flag:'🇮🇳', symbol:'₹',   unit:100 },
+  MYR: { name:'말레이시아 링깃', country:'말레이시아',  flag:'🇲🇾', symbol:'RM',  unit:1   },
+  NZD: { name:'뉴질랜드 달러',   country:'뉴질랜드',    flag:'🇳🇿', symbol:'NZ$', unit:1   },
+};
+
+const NEWS_QUERIES = {
+  USD:['원달러 환율','USD KRW exchange rate'],
+  EUR:['유로 환율 한국','EUR KRW exchange rate'],
+  JPY:['원엔 환율 일본','JPY KRW exchange rate'],
+  CNY:['원위안 환율 중국','CNY KRW exchange rate'],
+  GBP:['영국 파운드 환율','GBP KRW exchange rate'],
+  AUD:['호주 달러 환율','AUD KRW exchange rate'],
+  CAD:['캐나다 달러 환율','CAD KRW exchange rate'],
+  CHF:['스위스 프랑 환율','CHF KRW exchange rate'],
+  HKD:['홍콩 달러 환율','HKD KRW exchange rate'],
+  SGD:['싱가포르 달러 환율','SGD KRW exchange rate'],
+  THB:['태국 바트 환율','THB KRW exchange rate'],
+  INR:['인도 루피 환율','INR KRW exchange rate'],
+  MYR:['말레이시아 링깃 환율','MYR KRW exchange rate'],
+  NZD:['뉴질랜드 달러 환율','NZD KRW exchange rate'],
+};
+
+// ── 캐시 ─────────────────────────────────────────────
+const _cache = {};
+const TTL = 300000;
+function cGet(k) { const v=_cache[k]; return v&&Date.now()-v.ts<TTL?v.d:null; }
+function cSet(k,d) { _cache[k]={d,ts:Date.now()}; }
+
+// ── API 호출 ──────────────────────────────────────────
+async function apiFetch(url) {
+  const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json();
+}
+
+async function fetchRates() {
+  const k='rates'; const c=cGet(k); if(c) return c;
+  const d = await apiFetch('https://api.frankfurter.app/latest?from=KRW');
+  cSet(k,d); return d;
+}
+
+async function fetchYesterday() {
+  const k='yday'; const c=cGet(k); if(c) return c;
+  const dt = new Date(); dt.setDate(dt.getDate()-1);
+  const ds = dt.toISOString().split('T')[0];
+  const d  = await apiFetch(`https://api.frankfurter.app/${ds}?from=KRW`);
+  cSet(k,d); return d;
+}
+
+async function fetchHistorical(code) {
+  const k=`hist_${code}`; const c=cGet(k); if(c) return c;
+  const end   = new Date().toISOString().split('T')[0];
+  const start = new Date(Date.now()-30*864e5).toISOString().split('T')[0];
+  const d = await apiFetch(`https://api.frankfurter.app/${start}..${end}?from=KRW&to=${code}`);
+  cSet(k,d); return d;
+}
+
+function parseRSS(xml) {
+  try {
+    const doc = new DOMParser().parseFromString(xml,'text/xml');
+    return Array.from(doc.querySelectorAll('item')).map(item => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = item.querySelector('description')?.textContent || '';
+      return {
+        title:     item.querySelector('title')?.textContent?.trim() || '',
+        link:      item.querySelector('link')?.nextSibling?.nodeValue?.trim() ||
+                   item.querySelector('guid')?.textContent?.trim() || '#',
+        published: item.querySelector('pubDate')?.textContent?.trim() || '',
+        summary:   tmp.textContent.trim().slice(0,250),
+      };
+    });
+  } catch(e){ return []; }
+}
+
+async function fetchNews(code) {
+  const k=`news_${code}`; const c=cGet(k); if(c) return c;
+  const [koQ, enQ] = NEWS_QUERIES[code] || [`${code} 환율`,`${code} exchange rate`];
+  const items = [];
+  for (const [i, q] of [[0,koQ],[1,enQ]]) {
+    try {
+      const lang = i===0 ? 'ko&gl=KR&ceid=KR:ko' : 'en&gl=US&ceid=US:en';
+      const feed = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}`;
+      const url  = `https://api.allorigins.win/get?url=${encodeURIComponent(feed)}`;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      parseRSS(json.contents).slice(0, i===0?6:4).forEach(n => items.push({...n, lang:i===0?'ko':'en'}));
+    } catch(e) { console.warn(e); }
+  }
+  cSet(k,items); return items;
+}
+
+// ── 초기 렌더링 ──────────────────────────────────────
+function buildSelects() {
+  const codes = Object.keys(CURRENCIES);
+  const krwOpt = '<option value="KRW">🇰🇷 KRW 원</option>';
+  const opts   = codes.map(c=>`<option value="${c}">${CURRENCIES[c].flag} ${c} ${CURRENCIES[c].name}</option>`).join('');
+
+  document.getElementById('calcFromCur').innerHTML = krwOpt + opts;
+  document.getElementById('calcToCur').innerHTML   = opts.replace(`value="USD"`,`value="USD" selected`) + krwOpt;
+  document.getElementById('pfCode').innerHTML      = opts;
+}
+
+function buildCards() {
+  document.getElementById('cardGrid').innerHTML = Object.entries(CURRENCIES).map(([code,info])=>`
+    <div class="card" id="card-${code}" data-code="${code}" onclick="openDetail('${code}')">
+      <div class="card-actions">
+        <button class="star-btn" id="star-${code}" data-code="${code}" onclick="toggleFavorite('${code}',event)" title="즐겨찾기">☆</button>
+        <button class="bell-btn" id="bell-${code}" data-code="${code}" onclick="openAlertModal('${code}',event)" title="환율 알림">🔕</button>
+      </div>
+      <div class="card-header">
+        <span class="flag">${info.flag}</span>
+        <div><div class="card-code">${code}</div><div class="card-name">${info.name}</div></div>
+      </div>
+      <div class="rate-row">
+        <span class="rate-val skeleton" id="rate-${code}" style="width:90px;">&nbsp;</span>
+        <span class="rate-unit">원 / ${info.unit}${info.symbol}</span>
+      </div>
+      <div id="badge-${code}"></div>
+    </div>`).join('');
+}
+
+// ── 환율 로드 ─────────────────────────────────────────
+let ratesData = {};
+
+async function loadRates() {
+  try {
+    const [td, yd] = await Promise.all([fetchRates(), fetchYesterday()]);
+    const tr = td.rates||{}, yr = yd?.rates||{};
+    ratesData = {};
+    for (const [code,info] of Object.entries(CURRENCIES)) {
+      if (!(code in tr)) continue;
+      const unit   = info.unit;
+      const rToday = (1/tr[code])*unit;
+      const rYday  = yr[code] ? (1/yr[code])*unit : null;
+      const change = rYday!=null ? parseFloat((rToday-rYday).toFixed(2)) : null;
+      ratesData[code] = { rate:parseFloat(rToday.toFixed(2)), unit, change,
+        changePct: rYday&&change!=null ? parseFloat(((change/rYday)*100).toFixed(3)) : null,
+        date: td.date };
+    }
+    document.getElementById('lastUpdate').textContent =
+      `기준일: ${td.date}  ·  ${new Date().toLocaleTimeString('ko-KR')} 업데이트`;
+
+    for (const [code,info] of Object.entries(ratesData)) {
+      const rEl=document.getElementById(`rate-${code}`), bEl=document.getElementById(`badge-${code}`);
+      if (!rEl) continue;
+      rEl.classList.remove('skeleton'); rEl.style.width=''; rEl.textContent=fmt(info.rate);
+      if (info.change!=null) {
+        const dir=info.change>0?'up':info.change<0?'down':'flat';
+        const arrow=info.change>0?'▲':info.change<0?'▼':'─';
+        const sign=info.change>0?'+':'';
+        bEl.innerHTML=`<span class="change-badge ${dir}">${arrow} ${sign}${fmt(info.change)} (${sign}${info.changePct?.toFixed(2)}%)</span>`;
+      }
+    }
+    if (activeCurrency) refreshStats(activeCurrency);
+    calcConvert(); checkAlerts(); renderPortfolio();
+  } catch(e) { console.error(e); }
+}
+
+// ── 상세 패널 ─────────────────────────────────────────
+let activeCurrency=null, chartInstance=null, fullChartData=[];
+
+function openDetail(code) {
+  if (activeCurrency===code) { closeDetail(); return; }
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+  document.getElementById(`card-${code}`).classList.add('active');
+  activeCurrency=code;
+  const panel=document.getElementById('detailPanel');
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const info=CURRENCIES[code];
+  document.getElementById('panelFlag').textContent    = info.flag;
+  document.getElementById('panelTitle').textContent   = `${info.name} (${code})`;
+  document.getElementById('panelSubtitle').textContent= `${info.country}  ·  ${info.unit}${info.symbol} 당 원화`;
+  refreshStats(code);
+  loadChart(code);
+  loadNews(code);
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.days)===30));
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+  activeCurrency=null;
+  if (chartInstance) { chartInstance.destroy(); chartInstance=null; }
+}
+
+function refreshStats(code) {
+  const r=ratesData[code]; if (!r) return;
+  document.getElementById('statCurrent').textContent=`${fmt(r.rate)} 원`;
+  const chEl=document.getElementById('statChange'), pEl=document.getElementById('statPct');
+  if (r.change!=null) {
+    const dir=r.change>0?'up':r.change<0?'down':'';
+    const sign=r.change>=0?'+':'';
+    chEl.textContent=`${sign}${fmt(r.change)} 원`; chEl.className=`stat-val ${dir}`;
+    pEl.textContent=`${sign}${r.changePct?.toFixed(3)}%`; pEl.className=`stat-val ${dir}`;
+  }
+}
+
+// ── 차트 ─────────────────────────────────────────────
+async function loadChart(code) {
+  try {
+    const data = await fetchHistorical(code);
+    const unit = CURRENCIES[code].unit;
+    fullChartData = Object.entries(data.rates||{})
+      .sort(([a],[b])=>a.localeCompare(b))
+      .filter(([,r])=>code in r)
+      .map(([date,r])=>({date, rate:parseFloat(((1/r[code])*unit).toFixed(2))}));
+    const vals=fullChartData.map(d=>d.rate);
+    if (vals.length) {
+      document.getElementById('statHigh').textContent=fmt(Math.max(...vals))+' 원';
+      document.getElementById('statLow').textContent=fmt(Math.min(...vals))+' 원';
+    }
+    renderChart(30);
+  } catch(e) { console.error(e); }
+}
+
+function renderChart(days) {
+  const slice=fullChartData.slice(-days);
+  const ctx=document.getElementById('rateChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  const grad=ctx.createLinearGradient(0,0,0,240);
+  grad.addColorStop(0,'rgba(79,142,247,.35)'); grad.addColorStop(1,'rgba(79,142,247,0)');
+  const info=CURRENCIES[activeCurrency];
+  chartInstance=new Chart(ctx,{
+    type:'line',
+    data:{ labels:slice.map(d=>d.date), datasets:[{
+      label:`${info.unit}${info.symbol}→원`, data:slice.map(d=>d.rate),
+      borderColor:'#4f8ef7', backgroundColor:grad, borderWidth:2,
+      pointRadius:slice.length>20?0:3, pointHoverRadius:5, fill:true, tension:.3
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#1a1d27',borderColor:'#2e3248',borderWidth:1,
+          titleColor:'#8892a4',bodyColor:'#e2e8f0',
+          callbacks:{label:c=>` ${c.parsed.y.toLocaleString('ko-KR',{maximumFractionDigits:2})} 원`}
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#8892a4',maxTicksLimit:8,font:{size:11}},grid:{color:'#1e2235'}},
+        y:{ticks:{color:'#8892a4',font:{size:11},callback:v=>v.toLocaleString('ko-KR',{maximumFractionDigits:0})},grid:{color:'#1e2235'}}
+      }
+    }
+  });
+}
+
+function setPeriod(days,btn) {
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderChart(days);
+}
+
+// ── 뉴스 ─────────────────────────────────────────────
+async function loadNews(code) {
+  const list=document.getElementById('newsList');
+  list.innerHTML='<div class="spinner"></div>';
+  try {
+    const news=await fetchNews(code);
+    if (!news.length) { list.innerHTML='<div class="no-news">관련 뉴스를 찾을 수 없습니다.</div>'; return; }
+    list.innerHTML=news.map(n=>`
+      <a class="news-item" href="${escHtml(n.link)}" target="_blank" rel="noopener">
+        <div class="news-item-title">${escHtml(n.title)}</div>
+        <div class="news-item-meta">
+          <span class="news-lang ${n.lang}">${n.lang==='ko'?'한국어':'EN'}</span>
+          <span class="news-item-date">${timeAgo(n.published)}</span>
+        </div>
+        ${n.summary?`<div class="news-item-summary">${escHtml(n.summary)}</div>`:''}
+      </a>`).join('');
+  } catch(e) { list.innerHTML=`<div class="no-news">뉴스 로드 실패</div>`; }
+}
+
+// ── 즐겨찾기 ─────────────────────────────────────────
+let favorites=new Set(JSON.parse(localStorage.getItem('fav_currencies')||'[]'));
+
+function toggleFavorite(code,e) {
+  e.stopPropagation();
+  favorites.has(code)?favorites.delete(code):favorites.add(code);
+  localStorage.setItem('fav_currencies',JSON.stringify([...favorites]));
+  updateStars(); sortCards();
+}
+function updateStars() {
+  document.querySelectorAll('.star-btn').forEach(btn=>{
+    const on=favorites.has(btn.dataset.code);
+    btn.textContent=on?'★':'☆'; btn.classList.toggle('active',on);
+  });
+  document.querySelectorAll('.card[data-code]').forEach(c=>c.classList.toggle('favorited',favorites.has(c.dataset.code)));
+}
+function sortCards() {
+  const grid=document.getElementById('cardGrid');
+  [...grid.querySelectorAll('.card[data-code]')]
+    .sort((a,b)=>(favorites.has(a.dataset.code)?0:1)-(favorites.has(b.dataset.code)?0:1))
+    .forEach(c=>grid.appendChild(c));
+}
+
+// ── 환율 알림 ─────────────────────────────────────────
+let alerts=JSON.parse(localStorage.getItem('rate_alerts')||'[]');
+let alertCurrency=null;
+const firedAlerts=new Set();
+
+async function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission==='default') await Notification.requestPermission();
+}
+function openAlertModal(code,e) {
+  e.stopPropagation(); alertCurrency=code;
+  const info=CURRENCIES[code], r=ratesData[code];
+  document.getElementById('modalTitle').textContent=`${info.flag} ${info.name} (${code}) 알림`;
+  document.getElementById('alertRate').value=r?Math.round(r.rate):'';
+  document.getElementById('alertUnit').textContent=`원/${info.unit}${info.symbol}`;
+  renderExistingAlerts(code);
+  document.getElementById('alertModal').classList.add('open');
+  document.getElementById('alertSaveBtn').textContent='알림 설정';
+  requestNotifPermission();
+}
+function closeAlertModal() { document.getElementById('alertModal').classList.remove('open'); alertCurrency=null; }
+function saveAlert() {
+  const rate=parseFloat(document.getElementById('alertRate').value);
+  const dir=document.getElementById('alertDir').value;
+  if (!alertCurrency||isNaN(rate)||rate<=0) return;
+  alerts=alerts.filter(a=>!(a.code===alertCurrency&&a.direction===dir));
+  alerts.push({code:alertCurrency,rate,direction:dir});
+  localStorage.setItem('rate_alerts',JSON.stringify(alerts));
+  renderExistingAlerts(alertCurrency); updateBells();
+  const btn=document.getElementById('alertSaveBtn');
+  btn.textContent='✓ 설정 완료!'; setTimeout(()=>btn.textContent='알림 설정',1500);
+}
+function deleteAlert(code,dir) {
+  alerts=alerts.filter(a=>!(a.code===code&&a.direction===dir));
+  localStorage.setItem('rate_alerts',JSON.stringify(alerts));
+  renderExistingAlerts(code); updateBells();
+}
+function renderExistingAlerts(code) {
+  const el=document.getElementById('existingAlerts');
+  const my=alerts.filter(a=>a.code===code);
+  el.innerHTML=my.length?'<div class="existing-label">설정된 알림</div>'+my.map(a=>`
+    <div class="alert-item">
+      <span>${a.direction==='above'?'▲':'▼'} ${a.rate.toLocaleString('ko-KR')} 원</span>
+      <button onclick="deleteAlert('${a.code}','${a.direction}')">✕</button>
+    </div>`).join(''):'';
+}
+function updateBells() {
+  document.querySelectorAll('.bell-btn').forEach(btn=>{
+    const has=alerts.some(a=>a.code===btn.dataset.code);
+    btn.classList.toggle('active',has); btn.textContent=has?'🔔':'🔕';
+  });
+}
+function checkAlerts() {
+  if (!('Notification' in window)||Notification.permission!=='granted') return;
+  alerts.forEach(a=>{
+    const key=`${a.code}-${a.direction}`, r=ratesData[a.code]; if(!r) return;
+    const hit=a.direction==='above'?r.rate>=a.rate:r.rate<=a.rate;
+    if (hit&&!firedAlerts.has(key)) {
+      firedAlerts.add(key);
+      const info=CURRENCIES[a.code];
+      new Notification(`환율 알림: ${info.name}`,{
+        body:`현재 ${r.rate.toLocaleString('ko-KR')}원 — 목표 ${a.rate.toLocaleString('ko-KR')}원 ${a.direction==='above'?'이상':'이하'} 도달`
+      });
+    } else if (!hit) firedAlerts.delete(key);
+  });
+}
+
+// ── 보유 외화 평가 ────────────────────────────────────
+let portfolio=JSON.parse(localStorage.getItem('portfolio')||'[]');
+let pfNextId=portfolio.length?Math.max(...portfolio.map(e=>e.id))+1:1;
+
+function togglePfForm() {
+  const f=document.getElementById('pfForm'); f.classList.toggle('open');
+  if (f.classList.contains('open')) pfCurChanged();
+}
+function pfCurChanged() {
+  const code=document.getElementById('pfCode').value, info=CURRENCIES[code], r=ratesData[code];
+  document.getElementById('pfBuyLabel').textContent=`매입 환율 (원/${info.unit}${info.symbol})`;
+  if (r) document.getElementById('pfBuyRate').value=Math.round(r.rate);
+}
+function addPfEntry() {
+  const code=document.getElementById('pfCode').value;
+  const amount=parseFloat(document.getElementById('pfAmount').value);
+  const buyRate=parseFloat(document.getElementById('pfBuyRate').value);
+  if (!code||isNaN(amount)||amount<=0||isNaN(buyRate)||buyRate<=0) return;
+  portfolio.push({id:pfNextId++,code,amount,buyRate});
+  localStorage.setItem('portfolio',JSON.stringify(portfolio));
+  document.getElementById('pfAmount').value='';
+  document.getElementById('pfForm').classList.remove('open');
+  renderPortfolio();
+}
+function deletePfEntry(id) {
+  portfolio=portfolio.filter(e=>e.id!==id);
+  localStorage.setItem('portfolio',JSON.stringify(portfolio));
+  renderPortfolio();
+}
+function renderPortfolio() {
+  const lEl=document.getElementById('pfList'), sEl=document.getElementById('pfSummary');
+  if (!portfolio.length) {
+    lEl.innerHTML='<div class="pf-empty">보유 외화를 추가하면 매입가 대비 수익 / 손실을 확인할 수 있습니다.</div>';
+    sEl.style.display='none'; return;
+  }
+  let tP=0,tC=0; const rows=[];
+  for (const e of portfolio) {
+    const info=CURRENCIES[e.code]; if(!info) continue;
+    const r=ratesData[e.code], u=info.unit;
+    const bro=e.buyRate/u, cro=r?r.rate/u:null;
+    const pkrw=e.amount*bro, ckrw=cro!=null?e.amount*cro:null;
+    const pnl=ckrw!=null?ckrw-pkrw:null, pnlP=pnl!=null?(pnl/pkrw)*100:null;
+    if (ckrw!=null){tP+=pkrw;tC+=ckrw;}
+    const dir=pnl>0?'up':pnl<0?'down':'', sign=pnl!=null&&pnl>=0?'+':'';
+    const pnlHtml=pnl!=null
+      ?`<div class="pf-pnl-val ${dir}">${sign}${Math.round(pnl).toLocaleString('ko-KR')}원</div><div class="pf-pnl-pct">${sign}${pnlP.toFixed(2)}%</div>`
+      :'<div class="pf-pnl-val">—</div>';
+    rows.push(`<div class="pf-entry">
+      <span class="pf-flag">${info.flag}</span>
+      <div class="pf-info">
+        <div class="pf-name">${e.amount.toLocaleString('ko-KR')} ${info.symbol} · ${info.name}</div>
+        <div class="pf-detail">매입 ${e.buyRate.toLocaleString('ko-KR')}원/${u}${info.symbol} · 매입가 ${Math.round(pkrw).toLocaleString('ko-KR')}원${ckrw!=null?` → 현재 ${Math.round(ckrw).toLocaleString('ko-KR')}원`:''}</div>
+      </div>
+      <div class="pf-pnl">${pnlHtml}</div>
+      <button class="pf-del" onclick="deletePfEntry(${e.id})">✕</button>
+    </div>`);
+  }
+  lEl.innerHTML=rows.join('');
+  const tPnl=tC-tP, tPct=tP>0?(tPnl/tP)*100:0;
+  const td2=tPnl>0?'up':tPnl<0?'down':'', ts=tPnl>=0?'+':'';
+  sEl.style.display='flex';
+  sEl.innerHTML=`
+    <div class="pf-stat"><div class="pf-stat-label">총 매입가</div><div class="pf-stat-val">${Math.round(tP).toLocaleString('ko-KR')}원</div></div>
+    <div class="pf-stat"><div class="pf-stat-label">총 평가액</div><div class="pf-stat-val">${Math.round(tC).toLocaleString('ko-KR')}원</div></div>
+    <div class="pf-stat"><div class="pf-stat-label">총 손익</div><div class="pf-stat-val ${td2}">${ts}${Math.round(tPnl).toLocaleString('ko-KR')}원</div></div>
+    <div class="pf-stat"><div class="pf-stat-label">수익률</div><div class="pf-stat-val ${td2}">${ts}${tPct.toFixed(2)}%</div></div>`;
+}
+
+// ── 환전 계산기 ───────────────────────────────────────
+function krwPer(code) { if(code==='KRW') return 1; const r=ratesData[code]; return r?r.rate/r.unit:null; }
+function calcConvert() {
+  const amount=parseFloat(document.getElementById('calcFrom').value);
+  const from=document.getElementById('calcFromCur').value, to=document.getElementById('calcToCur').value;
+  const rEl=document.getElementById('calcResult'), nEl=document.getElementById('calcNote');
+  if (isNaN(amount)||amount<0){rEl.textContent='—';nEl.textContent='';return;}
+  if (!Object.keys(ratesData).length){rEl.textContent='로딩 중…';return;}
+  const fr=krwPer(from),tr=krwPer(to);
+  if (!fr||!tr){rEl.textContent='—';return;}
+  const result=(amount*fr)/tr;
+  const dp=result<1?6:result<100?4:2;
+  const toSym=to==='KRW'?'원':to;
+  rEl.textContent=result.toLocaleString('ko-KR',{maximumFractionDigits:dp})+' '+toSym;
+  const cross=fr/tr, fromSym=from==='KRW'?'원':from;
+  nEl.textContent=`참고: 1 ${fromSym} = ${cross<1?cross.toFixed(6):cross.toLocaleString('ko-KR',{maximumFractionDigits:2})} ${toSym}`;
+}
+function calcSwap() {
+  const f=document.getElementById('calcFromCur'),t=document.getElementById('calcToCur');
+  [f.value,t.value]=[t.value,f.value]; calcConvert();
+}
+
+// ── 유틸 ─────────────────────────────────────────────
+function fmt(n) { return n==null?'—':n.toLocaleString('ko-KR',{maximumFractionDigits:2}); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function timeAgo(str) {
+  const d=new Date(str); if (isNaN(d)) return str||'';
+  const s=Math.floor((Date.now()-d)/1000);
+  if (s<60) return `${s}초 전`; if (s<3600) return `${Math.floor(s/60)}분 전`;
+  if (s<86400) return `${Math.floor(s/3600)}시간 전`; return `${Math.floor(s/86400)}일 전`;
+}
+
+// ── 초기화 ────────────────────────────────────────────
+buildSelects();
+buildCards();
+updateStars(); updateBells(); sortCards();
+renderPortfolio();
+requestNotifPermission();
+loadRates();
+setInterval(loadRates, 5*60*1000);
+</script>
+</body>
+</html>
