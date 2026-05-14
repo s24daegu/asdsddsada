@@ -463,7 +463,10 @@ let ratesData = {};
 
 async function loadRates() {
   try {
-    const [td, yd] = await Promise.all([fetchRates(), fetchYesterday()]);
+    const [tdRes, ydRes] = await Promise.allSettled([fetchRates(), fetchYesterday()]);
+    if (tdRes.status === 'rejected') throw tdRes.reason;
+    const td = tdRes.value;
+    const yd = ydRes.status === 'fulfilled' ? ydRes.value : null;
     const tr = td.rates||{}, yr = yd?.rates||{};
     ratesData = {};
     for (const [code,info] of Object.entries(CURRENCIES)) {
