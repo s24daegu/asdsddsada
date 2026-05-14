@@ -368,31 +368,66 @@ function cGet(k) { const v=_cache[k]; return v&&Date.now()-v.ts<TTL?v.d:null; }
 function cSet(k,d) { _cache[k]={d,ts:Date.now()}; }
 
 // ── API 호출 ──────────────────────────────────────────
-async function apiFetch(url) {
-  // 직접 호출 시도
+const FALLBACK_RATES = {
+  date: '2026-05-13',
+  _fallback: true,
+  rates: {USD:0.00073,EUR:0.00065,JPY:0.10748,CNY:0.00456,GBP:0.00054,
+          AUD:0.00093,CAD:0.00092,CHF:0.00052,HKD:0.00565,SGD:0.00096,
+          THB:0.02459,INR:0.07273,MYR:0.00310,NZD:0.00123}
+};
+
+async function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
   try {
-    const r = await fetch(url, {signal: AbortSignal.timeout(6000)});
-    if (r.ok) return r.json();
-  } catch(_) {}
-  // 실패 시 codetabs 프록시로 재시도
-  const proxy = `https://api.codetabs.com/v1/proxy?quest=${url}`;
-  const r2 = await fetch(proxy, {signal: AbortSignal.timeout(12000)});
-  if (!r2.ok) throw new Error(r2.status);
-  return r2.json();
+    const r = await fetch(url, {signal: ctrl.signal});
+    clearTimeout(tid);
+    return r;
+  } catch(e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
+async function apiFetch(url) {
+  const proxies = [
+    {url: url, wrap: false},
+    {url: `https://api.codetabs.com/v1/proxy?quest=${url}`, wrap: false},
+    {url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, wrap: true},
+  ];
+  for (const {url: purl, wrap} of proxies) {
+    try {
+      const r = await fetchWithTimeout(purl, 10000);
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (wrap) {
+        if (!data || !data.contents) continue;
+        return JSON.parse(data.contents);
+      }
+      return data;
+    } catch(_) {}
+  }
+  throw new Error('all_failed');
 }
 
 async function fetchRates() {
   const k='rates'; const c=cGet(k); if(c) return c;
-  const d = await apiFetch('https://api.frankfurter.app/latest?from=KRW');
-  cSet(k,d); return d;
+  try {
+    const d = await apiFetch('https://api.frankfurter.app/latest?from=KRW');
+    cSet(k,d); return d;
+  } catch(_) {
+    return FALLBACK_RATES;
+  }
 }
 
 async function fetchYesterday() {
   const k='yday'; const c=cGet(k); if(c) return c;
   const dt = new Date(); dt.setDate(dt.getDate()-1);
   const ds = dt.toISOString().split('T')[0];
-  const d  = await apiFetch(`https://api.frankfurter.app/${ds}?from=KRW`);
-  cSet(k,d); return d;
+  try {
+    const d = await apiFetch(`https://api.frankfurter.app/${ds}?from=KRW`);
+    cSet(k,d); return d;
+  } catch(_) { return null; }
 }
 
 async function fetchHistorical(code) {
@@ -488,8 +523,9 @@ async function loadRates() {
         changePct: rYday&&change!=null ? parseFloat(((change/rYday)*100).toFixed(3)) : null,
         date: td.date };
     }
-    document.getElementById('lastUpdate').textContent =
-      `기준일: ${td.date}  ·  ${new Date().toLocaleTimeString('ko-KR')} 업데이트`;
+    document.getElementById('lastUpdate').textContent = td._fallback
+      ? `⚠️ 네트워크 연결 불가 — 임시 데이터 표시 중 (기준일: ${td.date})`
+      : `기준일: ${td.date}  ·  ${new Date().toLocaleTimeString('ko-KR')} 업데이트`;
 
     for (const [code,info] of Object.entries(ratesData)) {
       const rEl=document.getElementById(`rate-${code}`), bEl=document.getElementById(`badge-${code}`);
