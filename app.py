@@ -174,13 +174,15 @@ def fetch_news(currency):
     # 한국어 뉴스
     try:
         url  = f'https://news.google.com/rss/search?q={requests.utils.quote(ko_q)}&hl=ko&gl=KR&ceid=KR:ko'
-        feed = feedparser.parse(url)
+        resp = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+        resp.raise_for_status()
+        feed = feedparser.parse(resp.content)
         for entry in feed.entries[:6]:
             raw = getattr(entry, 'summary', '') or ''
             summary = BeautifulSoup(raw, 'html.parser').get_text()[:250]
             items.append({
-                'title':     entry.title,
-                'link':      entry.link,
+                'title':     getattr(entry, 'title', ''),
+                'link':      getattr(entry, 'link', '#'),
                 'published': getattr(entry, 'published', ''),
                 'summary':   summary,
                 'lang':      'ko',
@@ -191,13 +193,15 @@ def fetch_news(currency):
     # 영어 뉴스
     try:
         url  = f'https://news.google.com/rss/search?q={requests.utils.quote(en_q)}&hl=en&gl=US&ceid=US:en'
-        feed = feedparser.parse(url)
+        resp = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+        resp.raise_for_status()
+        feed = feedparser.parse(resp.content)
         for entry in feed.entries[:4]:
             raw = getattr(entry, 'summary', '') or ''
             summary = BeautifulSoup(raw, 'html.parser').get_text()[:250]
             items.append({
-                'title':     entry.title,
-                'link':      entry.link,
+                'title':     getattr(entry, 'title', ''),
+                'link':      getattr(entry, 'link', '#'),
                 'published': getattr(entry, 'published', ''),
                 'summary':   summary,
                 'lang':      'en',
@@ -329,7 +333,7 @@ def api_recommend():
         })
     except Exception as e:
         print(f'[recommend error] {e}')
-        return jsonify({'error': f'추천 데이터 처리 중 오류: {str(e)}', 'results': [], 'month': month, 'style': style}), 500
+        return jsonify({'error': '추천 데이터를 처리하는 중 오류가 발생했습니다.', 'results': [], 'month': month, 'style': style}), 500
 
 
 @app.route('/api/recommend/<currency>')

@@ -373,7 +373,7 @@ const FALLBACK_RATES = {
   _fallback: true,
   rates: {USD:0.00073,EUR:0.00065,JPY:0.10748,CNY:0.00456,GBP:0.00054,
           AUD:0.00093,CAD:0.00092,CHF:0.00052,HKD:0.00565,SGD:0.00096,
-          THB:0.02459,INR:0.07273,MYR:0.00310,NZD:0.00123}
+          THB:0.02703,INR:0.06250,MYR:0.00310,NZD:0.00123}
 };
 
 async function fetchWithTimeout(url, ms) {
@@ -464,7 +464,7 @@ async function fetchNews(code) {
       const lang = i===0 ? 'ko&gl=KR&ceid=KR:ko' : 'en&gl=US&ceid=US:en';
       const feed = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}`;
       const url  = `https://api.allorigins.win/get?url=${encodeURIComponent(feed)}`;
-      const resp = await fetch(url);
+      const resp = await fetchWithTimeout(url, 10000);
       const json = await resp.json();
       parseRSS(json.contents).slice(0, i===0?6:4).forEach(n => items.push({...n, lang:i===0?'ko':'en'}));
     } catch(e) { console.warn(e); }

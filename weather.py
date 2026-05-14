@@ -1,7 +1,8 @@
+import calendar
 import requests
 import sqlite3
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exchange_data.db')
@@ -62,7 +63,6 @@ def fetch_weather_month(currency, month):
 
     # Fetch same month from 2022 and 2023
     for year in [2022, 2023]:
-        import calendar
         last_day = calendar.monthrange(year, month)[1]
         start = f'{year}-{month:02d}-01'
         end   = f'{year}-{month:02d}-{last_day}'
@@ -96,7 +96,7 @@ def fetch_weather_month(currency, month):
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            c.execute('SELECT temp_max, temp_min, precip_sum FROM weather_cache WHERE city=?',
+            c.execute('SELECT temp_max, temp_min, precip_sum FROM weather_cache WHERE city=? ORDER BY date DESC LIMIT 1',
                       (f'{currency}_m{month}',))
             row = c.fetchone()
             conn.close()

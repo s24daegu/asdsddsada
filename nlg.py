@@ -133,10 +133,10 @@ def generate_recommendation(score_result):
 
     min_comp = min([(w,'weather'),(t,'trend'),(s,'sentiment'),(se,'season')], key=lambda x: x[0])
     tips = {
-        'weather':   f'{city} {MONTH_KO.get(month)}는 날씨 컨디션에 주의가 필요합니다. 현지 기상 예보를 꼭 확인하세요.',
+        'weather':   f'{city} {MONTH_KO.get(month, f"{month}월")}는 날씨 컨디션에 주의가 필요합니다. 현지 기상 예보를 꼭 확인하세요.',
         'trend':     '환율 변동이 있으므로 여행 전 환전 타이밍을 전략적으로 잡으세요.',
         'sentiment': '현지 뉴스를 미리 살펴보고 여행 일정을 유연하게 준비하세요.',
-        'season':    f'{MONTH_KO.get(month)}은 {city}의 비수기 또는 혼잡기일 수 있습니다. 예약을 서두르거나 대안 일정을 검토하세요.',
+        'season':    f'{MONTH_KO.get(month, f"{month}월")}은 {city}의 비수기 또는 혼잡기일 수 있습니다. 예약을 서두르거나 대안 일정을 검토하세요.',
     }
     tip = tips.get(min_comp[1], '')
 

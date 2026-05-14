@@ -202,11 +202,12 @@ def compute_styled_total(scores_dict, style='balanced'):
     weights = STYLE_WEIGHTS.get(style, STYLE_WEIGHTS['balanced'])
 
     # Normalize each component to 0-1 range, then apply weight × 100
+    # Actual maximums: weather=40, trend=20, sentiment=18, season=18
     normalized = {
         'weather':   scores_dict.get('weather', 20)   / 40,
         'trend':     scores_dict.get('trend', 10)      / 20,
-        'sentiment': scores_dict.get('sentiment', 10)  / 20,
-        'season':    scores_dict.get('season', 10)     / 20,
+        'sentiment': scores_dict.get('sentiment', 10)  / 18,
+        'season':    scores_dict.get('season', 10)     / 18,
     }
 
     total = sum(normalized[k] * weights[k] * 100 for k in weights)
