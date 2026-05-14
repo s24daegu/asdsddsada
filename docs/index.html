@@ -495,7 +495,13 @@ async function loadRates() {
     }
     if (activeCurrency) refreshStats(activeCurrency);
     calcConvert(); checkAlerts(); renderPortfolio(); if (travelLoaded) renderTravel();
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('lastUpdate').textContent = '⚠️ 환율 로드 실패 — 잠시 후 다시 시도합니다';
+    document.querySelectorAll('.rate-val.skeleton').forEach(el => {
+      el.classList.remove('skeleton'); el.style.width=''; el.textContent='—';
+    });
+  }
 }
 
 // ── 상세 패널 ─────────────────────────────────────────
