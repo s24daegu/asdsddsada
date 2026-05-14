@@ -371,15 +371,14 @@ function cSet(k,d) { _cache[k]={d,ts:Date.now()}; }
 async function apiFetch(url) {
   // 직접 호출 시도
   try {
-    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
+    const r = await fetch(url, {signal: AbortSignal.timeout(6000)});
     if (r.ok) return r.json();
   } catch(_) {}
-  // 실패 시 CORS 프록시로 재시도
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  // 실패 시 codetabs 프록시로 재시도
+  const proxy = `https://api.codetabs.com/v1/proxy?quest=${url}`;
   const r2 = await fetch(proxy, {signal: AbortSignal.timeout(12000)});
   if (!r2.ok) throw new Error(r2.status);
-  const data = await r2.json();
-  return JSON.parse(data.contents);
+  return r2.json();
 }
 
 async function fetchRates() {
