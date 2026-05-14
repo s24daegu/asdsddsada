@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import requests
 import sqlite3
 import feedparser
@@ -65,6 +65,37 @@ def init_db():
             currency TEXT,
             rate     REAL,
             PRIMARY KEY (date, currency)
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS weather_cache (
+            city       TEXT,
+            date       TEXT,
+            temp_max   REAL,
+            temp_min   REAL,
+            precip_sum REAL,
+            PRIMARY KEY (city, date)
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS sentiment_cache (
+            currency TEXT,
+            date     TEXT,
+            score    REAL,
+            PRIMARY KEY (currency, date)
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS travel_scores (
+            currency       TEXT,
+            month          INTEGER,
+            weather_score  REAL,
+            trend_score    REAL,
+            sentiment_score REAL,
+            season_score   REAL,
+            total_score    REAL,
+            computed_at    TEXT,
+            PRIMARY KEY (currency, month)
         )
     ''')
     conn.commit()
@@ -240,6 +271,115 @@ def api_news(currency):
         return jsonify({'error': '지원하지 않는 통화입니다.'}), 400
     news = fetch_news(currency)
     return jsonify({'news': news, 'currency': currency})
+
+@app.route('/api/recommend')
+def api_recommend():
+    from scorer import rank_currencies_for_month
+    from nlg import generate_recommendation
+
+    try:
+        month = int(request.args.get('month', datetime.now().month))
+        month = max(1, min(12, month))
+    except (ValueError, TypeError):
+        month = datetime.now().month
+
+    style = request.args.get('style', 'balanced')
+    if style not in ('weather_lover', 'budget_focused', 'adventure', 'balanced'):
+        style = 'balanced'
+
+    try:
+        # Fetch news for all currencies (use cached results from fetch_news)
+        news_map = {}
+        for code in CURRENCIES:
+            try:
+                cached_news = fetch_news(code)
+                if cached_news:
+                    news_map[code] = cached_news
+            except Exception:
+                pass
+
+        ranked = rank_currencies_for_month(month, style=style, news_map=news_map)
+        top5   = ranked[:5]
+
+        results = []
+        for item in top5:
+            try:
+                nlg = generate_recommendation(item)
+            except Exception as e:
+                print(f'[nlg error] {item.get("currency")}: {e}')
+                nlg = {'summary': '추천 생성 중 오류가 발생했습니다.', 'weather_text': '', 'trend_text': '', 'sentiment_text': '', 'tip': ''}
+            results.append({
+                'currency':    item['currency'],
+                'city':        item['city'],
+                'month':       item['month'],
+                'styled_total': item['styled_total'],
+                'label':       item['styled_label'],
+                'css_class':   item['styled_css'],
+                'scores':      item['scores'],
+                'style':       item['style'],
+                'style_label': item['style_label'],
+                'nlg':         nlg,
+            })
+
+        return jsonify({
+            'month':   month,
+            'style':   style,
+            'results': results,
+            'total_ranked': len(ranked),
+        })
+    except Exception as e:
+        print(f'[recommend error] {e}')
+        return jsonify({'error': f'추천 데이터 처리 중 오류: {str(e)}', 'results': [], 'month': month, 'style': style}), 500
+
+
+@app.route('/api/recommend/<currency>')
+def api_recommend_currency(currency):
+    from scorer import compute_all_scores, compute_styled_total, score_label, STYLE_LABELS
+    from nlg import generate_recommendation
+
+    if currency not in CURRENCIES:
+        return jsonify({'error': '지원하지 않는 통화입니다.'}), 400
+
+    try:
+        month = int(request.args.get('month', datetime.now().month))
+        month = max(1, min(12, month))
+    except (ValueError, TypeError):
+        month = datetime.now().month
+
+    style = request.args.get('style', 'balanced')
+    if style not in ('weather_lover', 'budget_focused', 'adventure', 'balanced'):
+        style = 'balanced'
+
+    news_items = fetch_news(currency)
+    score_result = compute_all_scores(currency, month, news_items=news_items)
+
+    if not score_result:
+        return jsonify({'error': '추천 데이터를 불러올 수 없습니다.'}), 500
+
+    styled_total = compute_styled_total(score_result['scores'], style)
+    label, css   = score_label(styled_total)
+    score_result['styled_total'] = styled_total
+    score_result['styled_label'] = label
+    score_result['styled_css']   = css
+    score_result['style']        = style
+    score_result['style_label']  = STYLE_LABELS.get(style, style)
+
+    nlg = generate_recommendation(score_result)
+
+    return jsonify({
+        'currency':     currency,
+        'city':         score_result['city'],
+        'month':        month,
+        'styled_total': styled_total,
+        'label':        label,
+        'css_class':    css,
+        'scores':       score_result['scores'],
+        'style':        style,
+        'style_label':  score_result['style_label'],
+        'nlg':          nlg,
+        'weather_data': score_result.get('weather_data'),
+        'trend_data':   score_result.get('trend_data'),
+    })
 
 init_db()
 
